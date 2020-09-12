@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 import random
 import torchvision
 import numpy as np
-from joint_transforms import crop, scale, flip
+from joint_transforms import crop, scale, flip, rotate
 
 
 def make_dataset(root):
@@ -66,6 +66,66 @@ class VideoImageFolder(data.Dataset):
 
     def __len__(self):
         return len(self.imgs)
+
+class VideoFSImageFolder(data.Dataset):
+    # image and gt should be in the same folder and have same filename except extended name (jpg and png respectively)
+    def __init__(self, root, seq_name, use_first=True, joint_transform=None, transform=None):
+        self.root = root
+        self.seq_name = seq_name
+        self.imgs = os.listdir(os.path.join(root, seq_name))
+        self.imgs.sort()
+        self.joint_transform = joint_transform
+        self.transform = transform
+        if use_first:
+            self.image_list =[self.imgs[0], self.imgs[1]]
+        else:
+            self.image_list = [self.imgs[1], self.imgs[2]]
+
+    def __getitem__(self, index):
+        # img_path, gt_path = self.imgs[index].split(' ')
+        first = Image.open(os.path.join(self.root, self.seq_name, self.image_list[0])).convert('RGB')
+        second = Image.open(os.path.join(self.root, self.seq_name, self.image_list[1])).convert('RGB')
+        if self.joint_transform is not None:
+            first, second = self.joint_transform(first, second)
+        if self.transform is not None:
+            first = self.transform(first)
+            second = self.transform(second)
+
+
+        return first, second
+
+    def __len__(self):
+        return len(self.image_list)
+
+class VideoFirstImageFolder(data.Dataset):
+    # image and gt should be in the same folder and have same filename except extended name (jpg and png respectively)
+    def __init__(self, root, gt_root, seq_name, joint_transform=None, transform=None, target_transform=None):
+        self.root = root
+        self.gt_root = gt_root
+        self.seq_name = seq_name
+        self.imgs = os.listdir(os.path.join(root, seq_name))
+        self.imgs.sort()
+        self.joint_transform = joint_transform
+        self.transform = transform
+        self.target_transform = target_transform
+        self.image_list = [self.imgs[0]]
+
+    def __getitem__(self, index):
+        # img_path, gt_path = self.imgs[index].split(' ')
+        img = Image.open(os.path.join(self.root, self.seq_name, self.image_list[0])).convert('RGB')
+        gt = Image.open(os.path.join(self.gt_root, self.seq_name, self.image_list[0][:-4] + '.png')).convert('L')
+        if self.joint_transform is not None:
+            img, gt = self.joint_transform(img, gt)
+        if self.transform is not None:
+            img = self.transform(img)
+        if self.target_transform is not None:
+            gt = self.target_transform(gt)
+
+
+        return img, gt
+
+    def __len__(self):
+        return len(self.image_list)
 
 class VideoImage2Folder(data.Dataset):
     # image and gt should be in the same folder and have same filename except extended name (jpg and png respectively)
@@ -269,6 +329,180 @@ class VideoSequenceFolder(data.Dataset):
     def __len__(self):
         return len(self.imgs)
 
+class ImageFlowFolder(data.Dataset):
+    # image and gt should be in the same folder and have same filename except extended name (jpg and png respectively)
+    def __init__(self, root, imgs_file, joint_transform=None, transform=None, target_transform=None):
+        self.root = root
+        self.imgs = [i_id.strip() for i_id in open(imgs_file)]
+        self.joint_transform = joint_transform
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __getitem__(self, index):
+        img_paths = self.imgs[index].split(' ')
+        img_list = []
+        gt_list = []
+
+        img = Image.open(os.path.join(self.root, img_paths[0])).convert('RGB')
+        flow = Image.open(os.path.join(self.root, img_paths[1])).convert('RGB')
+        target = Image.open(os.path.join(self.root, img_paths[2])).convert('L')
+        img_list.append(img)
+        img_list.append(flow)
+        gt_list.append(target)
+        gt_list.append(target)
+        if self.joint_transform is not None:
+            img_list, gt_list = self.joint_transform(img_list, gt_list)
+        if self.transform is not None:
+            img = self.transform(img_list[0])
+            flow = self.transform(img_list[1])
+        if self.target_transform is not None:
+            target = self.target_transform(gt_list[0])
+
+        return img, flow, target
+
+    def __len__(self):
+        return len(self.imgs)
+
+class ImageFlow2Folder(data.Dataset):
+    # image and gt should be in the same folder and have same filename except extended name (jpg and png respectively)
+    def __init__(self, root, imgs_file, video_root, video_gt_root, joint_transform=None,
+                 input_size=(473, 473), transform=None, target_transform=None):
+        self.root = root
+        self.imgs = [i_id.strip() for i_id in open(imgs_file)]
+        self.joint_transform = joint_transform
+        self.transform = transform
+        self.target_transform = target_transform
+        self.video_root = video_root
+        self.video_gt_root = video_gt_root
+        self.input_size = input_size
+
+        video_list = []
+        video_gt_list = []
+        video_num = {}
+        folders = os.listdir(video_root)
+        for folder in folders:
+            video_names = os.listdir(os.path.join(video_root, folder))
+            video_names.sort()
+            video_path = list(map(lambda x: os.path.join(video_root, folder, x), video_names))
+            start_num = len(video_list)
+            video_list.extend(video_path)
+            end_num = len(video_list)
+            video_num[folder] = np.array([start_num, end_num])
+
+            video_gt_names = os.listdir(os.path.join(video_gt_root, folder))
+            video_gt_names.sort()
+            video_gt_path = list(map(lambda x: os.path.join(video_gt_root, folder, x), video_gt_names))
+            video_gt_list.extend(video_gt_path)
+
+        self.video_list = video_list
+        self.video_gt_list = video_gt_list
+        self.video_num = video_num
+
+    def __getitem__(self, index):
+        img_paths = self.imgs[index].split(' ')
+        img_list = []
+        gt_list = []
+
+        img = Image.open(os.path.join(self.root, img_paths[0])).convert('RGB')
+        flow = Image.open(os.path.join(self.root, img_paths[1])).convert('RGB')
+        target = Image.open(os.path.join(self.root, img_paths[2])).convert('L')
+        img_list.append(img)
+        img_list.append(flow)
+        gt_list.append(target)
+        gt_list.append(target)
+
+        previous_frame, previous_gt, current_frame, \
+        current_gt, next_frame, next_gt = self.generate_video_seq()
+
+        img_list.append(previous_frame)
+        img_list.append(current_frame)
+        img_list.append(next_frame)
+        gt_list.append(previous_gt)
+        gt_list.append(current_gt)
+        gt_list.append(next_gt)
+
+
+        if self.joint_transform is not None:
+            img_list, gt_list = self.joint_transform(img_list, gt_list)
+        if self.transform is not None:
+            img = self.transform(img_list[0])
+            flow = self.transform(img_list[1])
+            previous_frame = self.transform(img_list[2])
+            current_frame = self.transform(img_list[3])
+            next_frame = self.transform(img_list[4])
+        if self.target_transform is not None:
+            target = self.target_transform(gt_list[0])
+            previous_gt = self.target_transform(gt_list[2])
+            current_gt = self.target_transform(gt_list[3])
+            next_gt = self.target_transform(gt_list[4])
+
+
+        return img, flow, target, previous_frame, previous_gt, current_frame, current_gt, next_frame, next_gt
+
+    def generate_video_seq(self):
+        video_index = random.randint(1, len(self.video_list) - 2)
+        # video_index = len(self.video_list) - 1
+        seq_name = self.video_list[video_index].split('/')[-2]
+        [start, end] = self.video_num[seq_name]
+
+        step = 3
+
+        if video_index <= start + step:
+            current_frame = Image.open(self.video_list[video_index + 1]).convert('RGB')
+            previous_frame = Image.open(self.video_list[video_index]).convert('RGB')
+            next_frame = Image.open(self.video_list[video_index + 2]).convert('RGB')
+
+            current_gt = Image.open(self.video_gt_list[video_index + 1]).convert('L')
+            previous_gt = Image.open(self.video_gt_list[video_index]).convert('L')
+            next_gt = Image.open(self.video_gt_list[video_index + 2]).convert('L')
+        elif video_index >= end - step:
+            current_frame = Image.open(self.video_list[video_index - 1]).convert('RGB')
+            previous_frame = Image.open(self.video_list[video_index - 2]).convert('RGB')
+            next_frame = Image.open(self.video_list[video_index]).convert('RGB')
+
+            current_gt = Image.open(self.video_gt_list[video_index - 1]).convert('L')
+            previous_gt = Image.open(self.video_gt_list[video_index - 2]).convert('L')
+            next_gt = Image.open(self.video_gt_list[video_index]).convert('L')
+        else:
+            span = random.randint(1, step)
+            current_frame = Image.open(self.video_list[video_index]).convert('RGB')
+            previous_frame = Image.open(self.video_list[video_index - span]).convert('RGB')
+            next_frame = Image.open(self.video_list[video_index + span]).convert('RGB')
+
+            current_gt = Image.open(self.video_gt_list[video_index]).convert('L')
+            previous_gt = Image.open(self.video_gt_list[video_index - span]).convert('L')
+            next_gt = Image.open(self.video_gt_list[video_index + span]).convert('L')
+
+        # w, h = current_frame.size
+        # tw = int(0.8 * w)
+        # th = int(0.8 * h)
+        # x1 = random.randint(0, w - tw)
+        # y1 = random.randint(0, h - th)
+        # scale_num = random.uniform(0.7, 1.3)
+        # flip_p = random.uniform(0, 1)
+        # degree_random = random.random()
+        #
+        # previous_frame, previous_gt = self.image_aug(previous_frame, previous_gt, scale_num, flip_p, degree_random, tw, th, x1, y1)
+        # current_frame, current_gt = self.image_aug(current_frame, current_gt, scale_num, flip_p, degree_random, tw, th, x1, y1)
+        # next_frame, next_gt = self.image_aug(next_frame, next_gt, scale_num, flip_p, degree_random, tw, th, x1, y1)
+        #
+        # if self.input_size is not None:
+        #     previous_frame, previous_gt = previous_frame.resize(self.input_size, Image.BILINEAR), previous_gt.resize(self.input_size, Image.NEAREST)
+        #     current_frame, current_gt = current_frame.resize(self.input_size, Image.BILINEAR), current_gt.resize(self.input_size, Image.NEAREST)
+        #     next_frame, next_gt = next_frame.resize(self.input_size, Image.BILINEAR), next_gt.resize(self.input_size, Image.NEAREST)
+
+        return previous_frame, previous_gt, current_frame, current_gt, next_frame, next_gt
+
+    def image_aug(self, img, gt, scale_num, flip_p, degree_random, tw, th, x1, y1):
+        img, gt = crop(img, gt, tw, th, x1, y1)
+        # img, gt = scale(img, gt, scale_num)
+        img, gt = flip(img, gt, flip_p)
+        img, gt = rotate(img, gt, degree_random)
+        return img, gt
+
+    def __len__(self):
+        return len(self.imgs)
+
 if __name__ == '__main__':
     from torchvision import transforms
 
@@ -279,6 +513,7 @@ if __name__ == '__main__':
     joint_transform = joint_transforms.Compose([
         joint_transforms.ImageResize(550),
         joint_transforms.RandomCrop(473),
+        joint_transforms.ColorJitter(hue=[-0.1, 0.1], saturation=0.05),
         joint_transforms.RandomHorizontallyFlip(),
         joint_transforms.RandomRotate(10)
     ])
@@ -289,6 +524,7 @@ if __name__ == '__main__':
     ])
 
     img_transform = transforms.Compose([
+        # transforms.ColorJitter(hue=[-0.1, 0.1]),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -296,33 +532,39 @@ if __name__ == '__main__':
     input_size = (473, 473)
     # imgs_file = '/home/ty/data/video_saliency/train_all_DAFB2_DAVSOD_5f.txt'
     # train_set = VideoSequenceFolder(video_seq_path, video_seq_gt_path, imgs_file, joint_transform, img_transform, target_transform)
-    imgs_file = '/home/ty/data/Pre-train/pretrain_all_seq_DUT_TR_DAFB2_DAVSOD.txt'
+    imgs_file = '/home/ty/data/Pre-train/pretrain_all_seq_DAFB2_DAVSOD_flow.txt'
     # train_set = VideoImageFolder(video_train_path, imgs_file, joint_transform, img_transform, target_transform)
     video_root = '/home/ty/data/video_saliency/train_all/DAFB2_DAVSOD'
     video_gt_root = '/home/ty/data/video_saliency/train_all_gt2_revised/DAFB2_DAVSOD'
 
-    train_set = VideoImage2Folder(video_train_path, imgs_file, video_root, video_gt_root, joint_transform, None, input_size, img_transform, target_transform)
-    train_loader = DataLoader(train_set, batch_size=6, num_workers=12, shuffle=False)
+    train_set = ImageFlowFolder(video_train_path, imgs_file,
+                                 joint_transform, img_transform, target_transform)
+    # train_loader = DataLoader(train_set, batch_size=6, num_workers=12, shuffle=False)
+
+    # train_set = VideoFSImageFolder('/home/ty/data/davis/davis_test2', 'blackswan', use_first=True,
+    #                                joint_transform=joint_transform, transform=img_transform)
+    train_loader = DataLoader(train_set, batch_size=12, num_workers=1, shuffle=False)
 
     for i, data in enumerate(train_loader):
-        input, target, previous_frame, previous_gt, current_frame, current_gt, next_frame, next_gt = data
-        input = current_gt.squeeze(0)
-        target = previous_gt.squeeze(0)
-        input = input.data.cpu().numpy()
-        target = target.data.cpu().numpy()
-        # np.savetxt('image.txt', input[0, 0, :, :])
-        input = input.transpose(0, 2, 3, 1)
-        target = target.transpose(0, 2, 3, 1)
-        # # for i in range(0, input.shape[0]):
-        # plt.subplot(2, 2, 1)
-        # plt.imshow(input[0, :, :, 0])
-        # plt.subplot(2, 2, 2)
-        # plt.imshow(target[0, :, :, 0])
+        input, flow, target = data
+        # first, second = data
+        # input = pre_img.data.cpu().numpy()
+        # flow = cur_img.data.cpu().numpy()
+        # # target = target.data.cpu().numpy()
+        # # np.savetxt('image.txt', input[0, 0, :, :])
+        # input = input.transpose(0, 2, 3, 1)
+        # flow = flow.transpose(0, 2, 3, 1)
+        # # target = target.transpose(0, 2, 3, 1)
+        # # # for i in range(0, input.shape[0]):
+        # plt.subplot(2, 1, 1)
+        # plt.imshow(input[0, :, :, :])
+        # plt.subplot(2, 1, 2)
+        # # plt.imshow(target[0, :, :, 0])
         #
-        # plt.subplot(2, 2, 3)
-        # plt.imshow(input[1, :, :, 0])
-        # plt.subplot(2, 2, 4)
-        # plt.imshow(target[1, :, :, 0])
-        # #
+        # # plt.subplot(2, 2, 3)
+        # plt.imshow(flow[0, :, :, :])
+        # # plt.subplot(2, 2, 4)
+        # # plt.imshow(target[1, :, :, 0])
+        #
         # plt.show()
-        print(input.shape)
+        print(input.size())
