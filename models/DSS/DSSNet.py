@@ -123,7 +123,8 @@ class DSS(nn.Module):
             # version1: mean fusion
             back.append(torch.cat(back, dim=1).mean(dim=1, keepdim=True))
         # add sigmoid
-        for i in back: prob.append(torch.sigmoid(i))
+        # for i in back: prob.append(torch.sigmoid(i))
+        for i in back: prob.append(i)
         return prob
 
 
@@ -147,7 +148,7 @@ def weights_init(m):
 
 if __name__ == '__main__':
     net = build_model()
-    img = torch.randn(1, 3, 64, 64)
+    img = torch.randn(1, 3, 512, 512)
     net = net.to(torch.device('cuda:0'))
     img = img.to(torch.device('cuda:0'))
     out = net(img)

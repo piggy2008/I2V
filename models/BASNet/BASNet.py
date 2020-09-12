@@ -84,16 +84,20 @@ class RefUnet(nn.Module):
 
         hx5 = self.relu5(self.bn5(self.conv5(hx)))
 
-        hx = self.upscore2(hx5)
+        # hx = self.upscore2(hx5)
+        hx = F.upsample(hx5, size=hx4.size()[2:], mode='bilinear', align_corners=True)
 
         d4 = self.relu_d4(self.bn_d4(self.conv_d4(torch.cat((hx,hx4),1))))
-        hx = self.upscore2(d4)
+        # hx = self.upscore2(d4)
+        hx = F.upsample(d4, size=hx3.size()[2:], mode='bilinear', align_corners=True)
 
         d3 = self.relu_d3(self.bn_d3(self.conv_d3(torch.cat((hx,hx3),1))))
-        hx = self.upscore2(d3)
+        # hx = self.upscore2(d3)
+        hx = F.upsample(d3, size=hx2.size()[2:], mode='bilinear', align_corners=True)
 
         d2 = self.relu_d2(self.bn_d2(self.conv_d2(torch.cat((hx,hx2),1))))
-        hx = self.upscore2(d2)
+        # hx = self.upscore2(d2)
+        hx = F.upsample(d2, size=hx1.size()[2:], mode='bilinear', align_corners=True)
 
         d1 = self.relu_d1(self.bn_d1(self.conv_d1(torch.cat((hx,hx1),1))))
 
@@ -249,8 +253,23 @@ class BASNet(nn.Module):
         ## -------------Refine Module-------------
         self.refunet = RefUnet(1,64)
 
+        ########## append prior from MGA ############
+        self.up_feature = nn.Sequential(nn.Conv2d(5, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
 
-    def forward(self,x):
+        for m in self.modules():
+            if isinstance(m, nn.ReLU) or isinstance(m, nn.Dropout):
+                m.inplace = True
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def forward(self, x, prior=None):
 
         hx = x
 
@@ -287,31 +306,36 @@ class BASNet(nn.Module):
         hx = self.relu6d_m(self.bn6d_m(self.conv6d_m(hx)))
         hd6 = self.relu6d_2(self.bn6d_2(self.conv6d_2(hx)))
 
-        hx = self.upscore2(hd6) # 8 -> 16
+        # hx = self.upscore2(hd6) # 8 -> 16
+        hx = F.upsample(hd6, size=h5.size()[2:], mode='bilinear', align_corners=True)
 
         hx = self.relu5d_1(self.bn5d_1(self.conv5d_1(torch.cat((hx,h5),1))))
         hx = self.relu5d_m(self.bn5d_m(self.conv5d_m(hx)))
         hd5 = self.relu5d_2(self.bn5d_2(self.conv5d_2(hx)))
 
-        hx = self.upscore2(hd5) # 16 -> 32
+        # hx = self.upscore2(hd5) # 16 -> 32
+        hx = F.upsample(hd5, size=h4.size()[2:], mode='bilinear', align_corners=True)
 
         hx = self.relu4d_1(self.bn4d_1(self.conv4d_1(torch.cat((hx,h4),1))))
         hx = self.relu4d_m(self.bn4d_m(self.conv4d_m(hx)))
         hd4 = self.relu4d_2(self.bn4d_2(self.conv4d_2(hx)))
 
-        hx = self.upscore2(hd4) # 32 -> 64
+        # hx = self.upscore2(hd4) # 32 -> 64
+        hx = F.upsample(hd4, size=h3.size()[2:], mode='bilinear', align_corners=True)
 
         hx = self.relu3d_1(self.bn3d_1(self.conv3d_1(torch.cat((hx,h3),1))))
         hx = self.relu3d_m(self.bn3d_m(self.conv3d_m(hx)))
         hd3 = self.relu3d_2(self.bn3d_2(self.conv3d_2(hx)))
 
-        hx = self.upscore2(hd3) # 64 -> 128
+        # hx = self.upscore2(hd3) # 64 -> 128
+        hx = F.upsample(hd3, size=h2.size()[2:], mode='bilinear', align_corners=True)
 
         hx = self.relu2d_1(self.bn2d_1(self.conv2d_1(torch.cat((hx,h2),1))))
         hx = self.relu2d_m(self.bn2d_m(self.conv2d_m(hx)))
         hd2 = self.relu2d_2(self.bn2d_2(self.conv2d_2(hx)))
 
-        hx = self.upscore2(hd2) # 128 -> 256
+        # hx = self.upscore2(hd2) # 128 -> 256
+        hx = F.upsample(hd2, size=h1.size()[2:], mode='bilinear', align_corners=True)
 
         hx = self.relu1d_1(self.bn1d_1(self.conv1d_1(torch.cat((hx,h1),1))))
         hx = self.relu1d_m(self.bn1d_m(self.conv1d_m(hx)))
@@ -319,26 +343,43 @@ class BASNet(nn.Module):
 
         ## -------------Side Output-------------
         db = self.outconvb(hbg)
-        db = self.upscore6(db) # 8->256
+        # db = self.upscore6(db) # 8->256
+        db = F.upsample(db, size=x.size()[2:], mode='bilinear', align_corners=True)
 
         d6 = self.outconv6(hd6)
-        d6 = self.upscore6(d6) # 8->256
+        # d6 = self.upscore6(d6) # 8->256
+        d6 = F.upsample(d6, size=x.size()[2:], mode='bilinear', align_corners=True)
 
         d5 = self.outconv5(hd5)
-        d5 = self.upscore5(d5) # 16->256
+        # d5 = self.upscore5(d5) # 16->256
+        d5 = F.upsample(d5, size=x.size()[2:], mode='bilinear', align_corners=True)
 
         d4 = self.outconv4(hd4)
-        d4 = self.upscore4(d4) # 32->256
+        # d4 = self.upscore4(d4) # 32->256
+        d4 = F.upsample(d4, size=x.size()[2:], mode='bilinear', align_corners=True)
 
         d3 = self.outconv3(hd3)
-        d3 = self.upscore3(d3) # 64->256
+        # d3 = self.upscore3(d3) # 64->256
+        d3 = F.upsample(d3, size=x.size()[2:], mode='bilinear', align_corners=True)
 
         d2 = self.outconv2(hd2)
-        d2 = self.upscore2(d2) # 128->256
+        # d2 = self.upscore2(d2) # 128->256
+        d2 = F.upsample(d2, size=x.size()[2:], mode='bilinear', align_corners=True)
 
         d1 = self.outconv1(hd1) # 256
 
         ## -------------Refine Module-------------
         dout = self.refunet(d1) # 256
 
-        return F.sigmoid(dout), F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5), F.sigmoid(d6), F.sigmoid(db)
+        if prior is None:
+            return dout, d1, d2, d3, d4, d5, d6, db
+        else:
+            conbine = self.up_feature(torch.cat([dout, d1, d2, d3, prior], dim=1))
+            conbine_pred1 = F.sigmoid(conbine.narrow(1, 0, 1))
+            conbine_pred2 = F.sigmoid(conbine.narrow(1, 1, 1))
+
+            dout = dout * conbine_pred1
+            d1 = d1 * conbine_pred2
+            return dout, d1, d2, d3, d4, d5, d6, db
+
+

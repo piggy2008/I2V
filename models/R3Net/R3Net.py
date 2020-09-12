@@ -57,11 +57,23 @@ class R3Net(nn.Module):
             nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.PReLU(),
             nn.Conv2d(128, 1, kernel_size=1)
         )
+        ########## append prior from MGA ############
+        # self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
+
         for m in self.modules():
             if isinstance(m, nn.ReLU) or isinstance(m, nn.Dropout):
                 m.inplace = True
 
-    def forward(self, x):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def forward(self, x, prior=None):
         layer0 = self.layer0(x)
         layer1 = self.layer1(layer0)
         layer2 = self.layer2(layer1)
@@ -94,16 +106,27 @@ class R3Net(nn.Module):
         predict5 = F.upsample(predict5, size=x.size()[2:], mode='bilinear', align_corners=True)
         predict6 = F.upsample(predict6, size=x.size()[2:], mode='bilinear', align_corners=True)
 
-        if self.training:
-            return predict0, predict1, predict2, predict3, predict4, predict5, predict6
-        return F.sigmoid(predict6)
+        if prior is None:
+            if self.training:
+                return predict0, predict1, predict2, predict3, predict4, predict5, predict6
+            return F.sigmoid(predict6)
+        else:
+            conbine = self.up_feature(torch.cat([predict6, predict5, prior], dim=1))
+            conbine_pred1 = F.sigmoid(conbine.narrow(1, 0, 1))
+            conbine_pred2 = F.sigmoid(conbine.narrow(1, 1, 1))
+
+            predict6 = predict6 * conbine_pred1
+            predict5 = predict5 * conbine_pred2
+            if self.training:
+                return predict0, predict1, predict2, predict3, predict4, predict5, predict6
+            return F.sigmoid(predict6)
 
 
 class _ASPP(nn.Module):
     #  this module is proposed in deeplabv3 and we use it in all of our baselines
     def __init__(self, in_dim):
         super(_ASPP, self).__init__()
-        down_dim = in_dim / 2
+        down_dim = in_dim // 2
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_dim, down_dim, kernel_size=1), nn.BatchNorm2d(down_dim), nn.PReLU()
         )

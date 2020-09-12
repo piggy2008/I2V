@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from model.SPP import ASPP_simple, ASPP
-from model.ResNet import ResNet101, ResNet18, ResNet34, ResNet50
+from .SPP import ASPP_simple, ASPP
+from .ResNet import ResNet101, ResNet18, ResNet34, ResNet50
 
 import time
 INPUT_SIZE = 512

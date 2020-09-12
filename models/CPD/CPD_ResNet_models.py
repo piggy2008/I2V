@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+import torch.nn.functional as F
 
 from .HolisticAttention import HA
 from .ResNet import B2_ResNet
@@ -115,11 +116,29 @@ class CPD_ResNet(nn.Module):
         self.agg2 = aggregation(channel)
         self.upsample = nn.Upsample(scale_factor=8, mode='bilinear', align_corners=True)
 
+
+        ########## append prior from MGA ############
+        self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
+        #
+        for m in self.modules():
+            if isinstance(m, nn.ReLU) or isinstance(m, nn.Dropout):
+                m.inplace = True
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
         self.HA = HA()
         if self.training:
             self.initialize_weights()
 
-    def forward(self, x):
+
+    def forward(self, x, prior=None):
+        x_size = x.size()
         x = self.resnet.conv1(x)
         x = self.resnet.bn1(x)
         x = self.resnet.relu(x)
@@ -134,6 +153,7 @@ class CPD_ResNet(nn.Module):
         x3_1 = self.rfb3_1(x3_1)
         x4_1 = self.rfb4_1(x4_1)
         attention_map = self.agg1(x4_1, x3_1, x2_1)
+        # F.upsample(d4, size=x.size()[2:], mode='bilinear', align_corners=True)
 
         x2_2 = self.HA(attention_map.sigmoid(), x2)
         x3_2 = self.resnet.layer3_2(x2_2)  # 1024 x 16 x 16
@@ -143,7 +163,19 @@ class CPD_ResNet(nn.Module):
         x4_2 = self.rfb4_2(x4_2)
         detection_map = self.agg2(x4_2, x3_2, x2_2)
 
-        return self.upsample(attention_map), self.upsample(detection_map)
+        attention_map = F.upsample(attention_map, size=x_size[2:], mode='bilinear', align_corners=True)
+        detection_map = F.upsample(detection_map, size=x_size[2:], mode='bilinear', align_corners=True)
+
+        if prior is None:
+            return attention_map, detection_map
+        else:
+            conbine = self.up_feature(torch.cat([detection_map, attention_map, prior], dim=1))
+            conbine_pred1 = F.sigmoid(conbine.narrow(1, 0, 1))
+            conbine_pred2 = F.sigmoid(conbine.narrow(1, 1, 1))
+
+            detection_map = detection_map * conbine_pred1
+            attention_map = attention_map * conbine_pred2
+            return attention_map, detection_map
 
     def initialize_weights(self):
         res50 = models.resnet50(pretrained=True)

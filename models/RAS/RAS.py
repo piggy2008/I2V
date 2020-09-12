@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from ResNet50 import ResNet50
+from .ResNet50 import ResNet50
 import torchvision.models as models
 
 
@@ -71,16 +71,21 @@ class RAS(nn.Module):
         self.ra3 = RA(512, channel)
         self.ra4 = RA(1024, channel)
 
+        ########## append prior from MGA ############
+        self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                m.weight.data.normal_(std=0.01)
+                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
         self.initialize_weights()
 
-    def forward(self, x):
+    def forward(self, x, prior=None):
         x1, x2, x3, x4, x5 = self.resnet(x)
         x_size = x.size()[2:]
         x1_size = x1.size()[2:]
@@ -107,7 +112,19 @@ class RAS(nn.Module):
         y1 = self.ra1(x1, y2_1)
         score1 = F.interpolate(y1, x_size, mode='bilinear', align_corners=True)
 
-        return score1, score2, score3, score4, score5
+        if prior is None:
+            return score1, score2, score3, score4, score5
+        else:
+            conbine = self.up_feature(torch.cat([score1, score2, prior], dim=1))
+            conbine_pred1 = F.sigmoid(conbine.narrow(1, 0, 1))
+            conbine_pred2 = F.sigmoid(conbine.narrow(1, 1, 1))
+
+            score1 = score1 * conbine_pred1
+            score2 = score2 * conbine_pred2
+
+            return score1, score2, score3, score4, score5
+
+
 
     def initialize_weights(self):
         res50 = models.resnet50(pretrained=True)

@@ -238,13 +238,13 @@ if __name__ == '__main__':
 
     device = torch.device("cuda")
     batch_size = 1
-    noise = torch.randn((batch_size, 3, 224, 224)).type(torch.cuda.FloatTensor)
-    target = torch.randn((batch_size, 1, 224, 224)).type(torch.cuda.FloatTensor)
+    noise = torch.randn((batch_size, 3, 448, 448)).type(torch.cuda.FloatTensor)
+    target = torch.randn((batch_size, 1, 448, 448)).type(torch.cuda.FloatTensor)
 
     model = Unet(cfg).cuda()
     model.encoder.seq.load_state_dict(vgg.features.state_dict())
     opt = torch.optim.Adam(model.parameters(), lr=0.001)
     print('Time: {}'.format(time.clock()))
-    _, loss = model(noise, target)
+    a, loss = model(noise, target)
     loss.backward()
 
