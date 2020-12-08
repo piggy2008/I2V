@@ -153,7 +153,7 @@ class R2Net(nn.Module):
         self.ARM_4 = ARMI(down_dim + down_dim + 1, down_dim, scale_factor=scale_factors[4])
 
         ########## append prior from MGA ############
-        self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
+        # self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
 
         for m in self.modules():
             if isinstance(m, nn.ReLU) or isinstance(m, nn.Dropout):
@@ -212,16 +212,9 @@ class R2Net(nn.Module):
         pre3 = F.upsample(pre3, size=x.size()[2:], mode='bilinear', align_corners=True)
         pre4 = F.upsample(pre4, size=x.size()[2:], mode='bilinear', align_corners=True)
 
-        if prior is None:
-            return global_pre, pre0, pre1, pre2, pre3, pre4
-        else:
-            conbine = self.up_feature(torch.cat([pre4, pre3, prior], dim=1))
-            conbine_pred1 = F.sigmoid(conbine.narrow(1, 0, 1))
-            conbine_pred2 = F.sigmoid(conbine.narrow(1, 1, 1))
 
-            pre4 = pre4 * conbine_pred1
-            pre3 = pre3 * conbine_pred2
-            return global_pre, pre0, pre1, pre2, pre3, pre4
+        return global_pre, pre0, pre1, pre2, pre3, pre4
+
 
 
 def build_model_r2net(base_model_cfg='vgg'):
