@@ -22,7 +22,6 @@ from models.R2Net.r2net import build_model_r2net
 from utils.utils_mine import load_part_of_model2
 import time
 from matplotlib import pyplot as plt
-from module.morphology import Erosion2d
 torch.manual_seed(2018)
 
 # set which gpu to use
