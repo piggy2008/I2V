@@ -206,7 +206,7 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
         prediction, _, _, _, _ = teacher(inputs, flows)
 
     optimizer.zero_grad()
-    outputs_a, outputs_b, outputs_c = student(inputs)
+    outputs_a, outputs_b = student(inputs)
     a_out1u, a_out2u, a_out2r, a_out3r, a_out4r, a_out5r = outputs_a # F3Net
     b_outputs0, b_outputs1 = outputs_b # CPD
     # c_outputs0, c_outputs1, c_outputs2, c_outputs3, c_outputs4 = outputs_c # RAS
