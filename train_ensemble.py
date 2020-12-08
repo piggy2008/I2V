@@ -151,7 +151,7 @@ def main():
     teacher.eval()
     teacher.cuda(device_id)
 
-    student = Ensemble().cuda(device_id).train()
+    student = Ensemble(device_id).cuda(device_id).train()
 
     # fix_parameters(net.named_parameters())
     optimizer = optim.SGD([
