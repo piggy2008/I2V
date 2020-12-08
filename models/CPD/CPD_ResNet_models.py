@@ -118,7 +118,7 @@ class CPD_ResNet(nn.Module):
 
 
         ########## append prior from MGA ############
-        self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
+        # self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
         #
         for m in self.modules():
             if isinstance(m, nn.ReLU) or isinstance(m, nn.Dropout):
@@ -166,16 +166,8 @@ class CPD_ResNet(nn.Module):
         attention_map = F.upsample(attention_map, size=x_size[2:], mode='bilinear', align_corners=True)
         detection_map = F.upsample(detection_map, size=x_size[2:], mode='bilinear', align_corners=True)
 
-        if prior is None:
-            return attention_map, detection_map
-        else:
-            conbine = self.up_feature(torch.cat([detection_map, attention_map, prior], dim=1))
-            conbine_pred1 = F.sigmoid(conbine.narrow(1, 0, 1))
-            conbine_pred2 = F.sigmoid(conbine.narrow(1, 1, 1))
 
-            detection_map = detection_map * conbine_pred1
-            attention_map = attention_map * conbine_pred2
-            return attention_map, detection_map
+        return attention_map, detection_map
 
     def initialize_weights(self):
         res50 = models.resnet50(pretrained=True)

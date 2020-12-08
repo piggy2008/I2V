@@ -169,15 +169,6 @@ class F3Net(nn.Module):
         self.linearr5 = nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1)
 
         ########## append prior from MGA ############
-        self.up_feature = nn.Sequential(nn.Conv2d(4, 3, 1), nn.BatchNorm2d(3), nn.ReLU(inplace=True))
-        # self.linearp1_prior = nn.Conv2d(65, 1, kernel_size=3, stride=1, padding=1)
-        # self.linearp2_prior = nn.Conv2d(65, 1, kernel_size=3, stride=1, padding=1)
-        #
-        # self.linearr2_prior = nn.Conv2d(65, 1, kernel_size=3, stride=1, padding=1)
-        # self.linearr3_prior = nn.Conv2d(65, 1, kernel_size=3, stride=1, padding=1)
-        # self.linearr4_prior = nn.Conv2d(65, 1, kernel_size=3, stride=1, padding=1)
-        # self.linearr5_prior = nn.Conv2d(65, 1, kernel_size=3, stride=1, padding=1)
-
         self.initialize()
 
     def forward(self, x, prior=None, shape=None):
@@ -194,19 +185,9 @@ class F3Net(nn.Module):
         out3h = F.interpolate(self.linearr3(out3h), size=shape, mode='bilinear')
         out4h = F.interpolate(self.linearr4(out4h), size=shape, mode='bilinear')
         out5h = F.interpolate(self.linearr5(out5v), size=shape, mode='bilinear')
-        if prior is None:
-            return pred1a, pred2a, out2h, out3h, out4h, out5h
-        else:
-            conbine = self.up_feature(torch.cat([pred1a, pred2a, out3h, prior], dim=1))
-            conbine_pred1 = F.sigmoid(conbine.narrow(1, 0, 1))
-            conbine_pred2 = F.sigmoid(conbine.narrow(1, 1, 1))
-            conbine_pred3 = F.sigmoid(conbine.narrow(1, 2, 1))
 
-            pred1b = pred1a * conbine_pred1
-            pred2b = pred2a * conbine_pred2
-            out3h = out3h * conbine_pred3
-            
-            return pred1b, pred2b, out2h, out3h, out4h, out5h
+        return pred1a, pred2a, out2h, out3h, out4h, out5h
+
 
 
     def initialize(self):
