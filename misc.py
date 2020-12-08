@@ -95,14 +95,14 @@ class CriterionStructure(nn.Module):
         wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
 
         ##### focal loss #####
-        p_t = torch.exp(-wbce)
-        f_loss = (1 - p_t) ** self.gamma * wbce
+        # p_t = torch.exp(-wbce)
+        # f_loss = (1 - p_t) ** self.gamma * wbce
 
         pred = torch.sigmoid(pred)
         inter = ((pred * target) * weit).sum(dim=(2, 3))
         union = ((pred + target) * weit).sum(dim=(2, 3))
         wiou = 1 - (inter + 1) / (union - inter + 1)
-        return (wbce + wiou + f_loss).mean()
+        return (wbce + wiou).mean()
 
 def _pointwise_loss(lambd, input, target, size_average=True, reduce=True):
     d = lambd(input, target)

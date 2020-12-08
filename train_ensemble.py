@@ -219,8 +219,8 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
     loss5_a = criterion_str(a_out5r, labels)
     loss_hard_a = (loss0_a + loss1_a) / 2 + loss2_a / 2 + loss3_a / 4 + loss4_a / 8 + loss5_a / 16
 
-    loss0_b = criterion_str(b_outputs0, labels)
-    loss1_b = criterion_str(b_outputs1, labels)
+    loss0_b = criterion(b_outputs0, labels)
+    loss1_b = criterion(b_outputs1, labels)
     loss_hard_b = loss0_b + loss1_b
 
     # loss0_c = criterion_str(c_outputs0, labels)
@@ -242,8 +242,8 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
         loss5_a = criterion_str(a_out5r, F.sigmoid(prediction))
         loss_soft_a = (loss0_a + loss1_a) / 2 + loss2_a / 2 + loss3_a / 4 + loss4_a / 8 + loss5_a / 16
 
-        loss0_b = criterion_str(b_outputs0, F.sigmoid(prediction))
-        loss1_b = criterion_str(b_outputs1, F.sigmoid(prediction))
+        loss0_b = criterion(b_outputs0, F.sigmoid(prediction))
+        loss1_b = criterion(b_outputs1, F.sigmoid(prediction))
         loss_soft_b = loss0_b + loss1_b
 
         # loss0_c = criterion_str(c_outputs0, F.sigmoid(prediction))
@@ -253,7 +253,7 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
         # loss4_c = criterion_str(c_outputs4, F.sigmoid(prediction))
         # loss_soft_c = loss0_c + loss1_c + loss2_c + loss3_c + loss4_c
 
-        loss_en_soft = criterion_str(a_out2u + b_outputs1, F.sigmoid(prediction))
+        loss_en_soft = criterion(a_out2u + b_outputs1, F.sigmoid(prediction))
 
     loss_hard = loss_hard_a + loss_hard_b
     if args['distillation']:
