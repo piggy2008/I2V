@@ -23,7 +23,7 @@ from utils.utils_mine import load_part_of_model, load_part_of_model2
 import random
 
 cudnn.benchmark = True
-device_id = 2
+device_id = 1
 torch.manual_seed(2019)
 # torch.cuda.set_device(device_id)
 
@@ -39,12 +39,12 @@ args = {
     'iter_num': 10000,
     'iter_save': 2000,
     'iter_start_seq': 0,
-    'train_batch_size': 12,
+    'train_batch_size': 6,
     'last_iter': 0,
     'lr': 1e-3,
     'lr_decay': 0.9,
     'weight_decay': 5e-4,
-    'momentum': 0.95,
+    'momentum': 0.925,
     'snapshot': '',
     # 'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2020-07-24 15:18:51', '100000.pth'),
     'pretrain': '',
