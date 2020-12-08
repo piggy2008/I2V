@@ -18,7 +18,7 @@ from utils.utils_mine import load_part_of_model2
 import time
 from matplotlib import pyplot as plt
 torch.manual_seed(2018)
-device_id = 3
+device_id = 2
 # set which gpu to use
 torch.cuda.set_device(device_id)
 
