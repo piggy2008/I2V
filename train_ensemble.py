@@ -134,7 +134,7 @@ def fix_parameters(parameters):
 def main():
     teacher = MGA_Network(nInputChannels=3, n_classes=1, os=16,
                       img_backbone_type='resnet101', flow_backbone_type='resnet34')
-    teacher = load_MGA(teacher, args['mga_model_path'], device_id=0)
+    teacher = load_MGA(teacher, args['mga_model_path'], device_id=device_id)
     teacher.eval()
     teacher.cuda(device_id)
 
