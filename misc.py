@@ -7,6 +7,8 @@ import pydensecrf.densecrf as dcrf
 import torch.nn.functional as F
 torch_ver = torch.__version__[:3]
 
+eps = sys.float_info.epsilon
+
 class AvgMeter(object):
     def __init__(self):
         self.reset()
@@ -151,6 +153,155 @@ def check_mkdir(dir_name):
     if not os.path.exists(dir_name):
         os.mkdir(dir_name)
 
+def s_measure(gt, sm):
+    """
+    This fucntion computes the structural similarity (S-Measure) between the saliency map and the ground truth
+    article: https://www.crcv.ucf.edu/papers/iccv17/1164.pdf
+    original code [Matlab]: https://github.com/DengPingFan/S-measure
+    parameters
+    ----------
+    gt : numpy.ndarray
+        The path to the ground truth directory
+    sm : numpy.ndarray
+        The path to the predicted saliency map directory
+    Returns
+    -------
+    value : float
+        The calculated S-masure
+    """
+    gt_mean = np.mean(gt)
+
+    if gt_mean == 0:  # if the GT is completely black
+        sm_mean = np.mean(sm)
+        measure = 1.0 - sm_mean  # only calculate the area of intersection
+    elif gt_mean == 1:  # if the GT is completely white
+        sm_mean = np.mean(sm)
+        measure = sm_mean.copy()  # only calcualte the area of intersection
+    else:
+        alpha = 0.5
+        measure = alpha * s_object(sm, gt) + (1 - alpha) * s_region(sm, gt)
+        if measure < 0:
+            measure = 0
+
+    return measure
+
+
+def ssim(gt, sm):
+    gt = gt.astype(np.float32)
+
+    height, width = sm.shape
+    num_pixels = width * height
+
+    # Compute the mean of SM,GT
+    sm_mean = np.mean(sm)
+    gt_mean = np.mean(gt)
+
+    # Compute the variance of SM,GT
+    sigma_x2 = np.sum(np.sum((sm - sm_mean) ** 2)) / (num_pixels - 1 + eps)
+    sigma_y2 = np.sum(np.sum((gt - gt_mean) ** 2)) / (num_pixels - 1 + eps)
+
+    # Compute the covariance
+    sigma_xy = np.sum(np.sum((sm - sm_mean) * (gt - gt_mean))) / (num_pixels - 1 + eps)
+
+    alpha = 4 * sm_mean * gt_mean * sigma_xy
+    beta = (sm_mean ** 2 + gt_mean ** 2) * (sigma_x2 + sigma_y2)
+
+    if alpha != 0:
+        ssim_value = alpha / (beta + eps)
+    elif alpha == 0 and beta == 0:
+        ssim_value = 1.0
+    else:
+        ssim_value = 0
+
+    return ssim_value
+
+
+def divide_sm(sm, x, y):
+    # copy the 4 regions
+    lt = sm[:y, :x]
+    rt = sm[:y, x:]
+    lb = sm[y:, :x]
+    rb = sm[y:, x:]
+
+    return lt, rt, lb, rb
+
+
+def divide_gt(gt, x, y):
+    height, width = gt.shape
+    area = width * height
+
+    # copy the 4 regions
+    lt = gt[:y, :x]
+    rt = gt[:y, x:]
+    lb = gt[y:, :x]
+    rb = gt[y:, x:]
+
+    # The different weight (each block proportional to the GT foreground region).
+    w1 = (x * y) / area
+    w2 = ((width - x) * y) / area
+    w3 = (x * (height - y)) / area
+    w4 = 1.0 - w1 - w2 - w3
+
+    return lt, rt, lb, rb, w1, w2, w3, w4
+
+
+def centroid(gt):
+    # col
+    rows, cols = gt.shape
+
+    if np.sum(gt) == 0:
+        x = np.round(cols / 2)
+        y = np.round(rows / 2)
+    else:
+        total = np.sum(gt)
+        i = np.arange(cols).reshape(1, cols) + 1
+        j = np.arange(rows).reshape(rows, 1) + 1
+
+        x = int(np.round(np.sum(np.sum(gt, 0, keepdims=True) * i) / total))
+        y = int(np.round(np.sum(np.sum(gt, 1, keepdims=True) * j) / total))
+
+    return x, y
+
+
+def s_region(gt, sm):
+    x, y = centroid(gt)
+    gt_1, gt_2, gt_3, gt_4, w1, w2, w3, w4 = divide_gt(gt, x, y)
+
+    sm_1, sm_2, sm_3, sm_4 = divide_sm(sm, x, y)
+
+    q1 = ssim(sm_1, gt_1)
+    q2 = ssim(sm_2, gt_2)
+    q3 = ssim(sm_3, gt_3)
+    q4 = ssim(sm_4, gt_4)
+
+    region_value = w1 * q1 + w2 * q2 + w3 * q3 + w4 * q4
+
+    return region_value
+
+
+def object(gt, sm):
+    x = np.mean(sm[gt == 1])
+    # compute the standard deviations of the foreground or background in sm
+    sigma_x = np.std(sm[gt == 1])
+    score = 2.0 * x / (x ** 2 + 1.0 + sigma_x + eps)
+    return score
+
+
+def s_object(gt, sm):
+    # compute the similarity of the foreground in the object level
+
+    sm_fg = sm.copy()
+    sm_fg[gt == 0] = 0
+    o_fg = object(sm_fg, gt)
+
+    # compute the similarity of the background
+    sm_bg = 1.0 - sm.copy()
+    sm_bg[gt == 1] = 0
+    o_bg = object(sm_bg, gt == 0)
+
+    u = np.mean(gt)
+    object_value = u * o_fg + (1 - u) * o_bg
+    return object_value
 
 def cal_precision_recall_mae(prediction, gt):
     # input should be np array with data type uint8
@@ -184,6 +335,41 @@ def cal_precision_recall_mae(prediction, gt):
         recall.append((tp + eps) / (t + eps))
 
     return precision, recall, mae
+
+def cal_precision_recall_mae_smeasure(prediction, gt):
+    # input should be np array with data type uint8
+    assert prediction.dtype == np.uint8
+    assert gt.dtype == np.uint8
+    assert prediction.shape == gt.shape
+
+    eps = 1e-4
+
+    prediction = prediction / 255.
+    gt = gt / 255.
+
+    mae = np.mean(np.abs(prediction - gt))
+
+    smeasure = s_measure(gt, prediction)
+
+    hard_gt = np.zeros(prediction.shape)
+    hard_gt[gt > 0.5] = 1
+    t = np.sum(hard_gt)
+
+    precision, recall = [], []
+    # calculating precision and recall at 255 different binarizing thresholds
+    for threshold in range(256):
+        threshold = threshold / 255.
+
+        hard_prediction = np.zeros(prediction.shape)
+        hard_prediction[prediction > threshold] = 1
+
+        tp = np.sum(hard_prediction * hard_gt)
+        p = np.sum(hard_prediction)
+
+        precision.append((tp + eps) / (p + eps))
+        recall.append((tp + eps) / (t + eps))
+
+    return precision, recall, mae, smeasure
 
 
 def cal_fmeasure(precision, recall):
