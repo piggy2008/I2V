@@ -31,11 +31,11 @@ torch.cuda.set_device(0)
 # the following two args specify the location of the file of trained model (pth extension)
 # you should have the pth file in the folder './$ckpt_path$/$exp_name$'
 ckpt_path = './ckpt'
-exp_name = 'VideoSaliency_2020-08-22 14:17:51'
+exp_name = 'VideoSaliency_2020-10-14 03:36:19'
 
 args = {
     'model': 'F3Net',
-    'snapshot': '50000',  # your snapshot filename (exclude extension name)
+    'snapshot': '20000',  # your snapshot filename (exclude extension name)
     'crf_refine': False,  # whether to use crf to refine results
     'save_results': True,  # whether to save the resulting masks
     'input_size': (380, 380)
@@ -49,9 +49,9 @@ to_pil = transforms.ToPILImage()
 # to_test = {'ecssd': ecssd_path, 'hkuis': hkuis_path, 'pascal': pascals_path, 'sod': sod_path, 'dutomron': dutomron_path}
 # to_test = {'ecssd': ecssd_path}
 
-# to_test = {'davis': os.path.join(davis_path, 'davis_test2')}
-# gt_root = os.path.join(davis_path, 'GT')
-# imgs_path = os.path.join(davis_path, 'davis_test2_single.txt')
+#to_test = {'davis': os.path.join(davis_path, 'davis_test2')}
+#gt_root = os.path.join(davis_path, 'GT')
+#imgs_path = os.path.join(davis_path, 'davis_test2_single.txt')
 
 # to_test = {'FBMS': os.path.join(fbms_path, 'FBMS_Testset')}
 # gt_root = os.path.join(fbms_path, 'GT')
@@ -69,9 +69,9 @@ to_test = {'VOS': os.path.join(vos_path, 'VOS_test')}
 gt_root = os.path.join(vos_path, 'GT')
 imgs_path = os.path.join(vos_path, 'VOS_test_single.txt')
 
-# to_test = {'DAVSOD': os.path.join(davsod_path, 'DAVSOD_test')}
-# gt_root = os.path.join(davsod_path, 'GT')
-# imgs_path = os.path.join(davsod_path, 'DAVSOD_test_single.txt')
+#to_test = {'DAVSOD': os.path.join(davsod_path, 'DAVSOD_test')}
+#gt_root = os.path.join(davsod_path, 'GT')
+#imgs_path = os.path.join(davsod_path, 'DAVSOD_test_single.txt')
 
 # to_test = {'MCL': os.path.join(mcl_path, 'MCL_test')}
 # gt_root = os.path.join(mcl_path, 'GT')
@@ -322,7 +322,7 @@ if __name__ == '__main__':
 # {'davis': {'fmeasure': 0.8634947641279994, 'mae': 0.030284757482625123}} 40000
 # {'davis': {'fmeasure': 0.8604904754370101, 'mae': 0.030785979459017395}} 20000
 
-# poolnet only finetune
+# poolnet only finetune VideoSaliency_2020-08-31 15:48:03
 # {'davis': {'fmeasure': 0.8567896379616566, 'mae': 0.028652147056242798}} 10000
 # {'davis': {'fmeasure': 0.8530932574012062, 'mae': 0.028328569737440374}} 20000
 # {'davis': {'fmeasure': 0.8573124361232648, 'mae': 0.02838192739825468}} 30000
@@ -330,7 +330,7 @@ if __name__ == '__main__':
 # {'VOS': {'fmeasure': 0.7404455357165366, 'mae': 0.07203330270967374}} 20000
 # {'DAVSOD': {'fmeasure': 0.6152740410451761, 'mae': 0.0780330552217813}} 20000
 
-# gate
+# gate VideoSaliency_2020-08-26 15:35:19
 # {'davis': {'fmeasure': 0.8632113552777682, 'mae': 0.029550991612412567}} 40000
 # {'davis': {'fmeasure': 0.8634872265430311, 'mae': 0.029076951244899493}} 30000
 
@@ -402,7 +402,7 @@ if __name__ == '__main__':
 # {'VOS': {'fmeasure': 0.7760511417773258, 'mae': 0.07494954062830472}} 80000
 # {'VOS': {'fmeasure': 0.7723011074614098, 'mae': 0.07578435707489597}} 80000
 
-# R2Net only finetune
+# R2Net only finetune VideoSaliency_2020-09-01 00:44:17
 # {'davis': {'fmeasure': 0.8548179629861553, 'mae': 0.030795675437143337}} 40000
 # {'davis': {'fmeasure': 0.8635315735308017, 'mae': 0.030016298981508035}} 30000
 # {'davis': {'fmeasure': 0.8625687113609614, 'mae': 0.028724036500521192}} 20000
@@ -412,7 +412,7 @@ if __name__ == '__main__':
 # {'VOS': {'fmeasure': 0.7261581810893859, 'mae': 0.07565893406248822}} 30000
 # {'DAVSOD': {'fmeasure': 0.6446839646609621, 'mae': 0.07180091274861225}} 30000
 
-# gate module insert
+# gate module insert VideoSaliency_2020-08-24 02:28:12
 # {'davis': {'fmeasure': 0.8748441653176292, 'mae': 0.027851314948555327}} 10000
 # {'davis': {'fmeasure': 0.873028833377723, 'mae': 0.028706954658253268}} 30000
 
@@ -431,14 +431,14 @@ if __name__ == '__main__':
 
 # {'VOS': {'fmeasure': 0.7795804356591828, 'mae': 0.07915214435496876}} 20000
 
-# RAS2 only finetune
+# RAS2 only finetune VideoSaliency_2020-09-01 04:50:49
 # {'davis': {'fmeasure': 0.8605102182763539, 'mae': 0.03238801393782354}}
 # {'davis': {'fmeasure': 0.8566328414011626, 'mae': 0.033554104844020126}}
 
 # {'DAVSOD': {'fmeasure': 0.6138489186693313, 'mae': 0.07923908515233896}} 30000
 # {'VOS': {'fmeasure': 0.752770620576296, 'mae': 0.07330827505174432}} 30000
 
-# gate module insert
+# gate module insert VideoSaliency_2020-08-23 04:35:43
 # {'davis': {'fmeasure': 0.8825059020992001, 'mae': 0.030672534257460114}}
 # {'davis': {'fmeasure': 0.8829802090654366, 'mae': 0.030159273414776422}}
 
