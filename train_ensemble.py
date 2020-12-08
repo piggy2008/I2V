@@ -56,8 +56,8 @@ args = {
     # 'train_loader': 'video_image'
     'train_loader': 'flow_image',
     # 'train_loader': 'video_sequence'
-    'image_size': 430,
-    'crop_size': 380
+    'image_size': 400,
+    'crop_size': 360
 }
 
 imgs_file = os.path.join(datasets_root, args['imgs_file'])
