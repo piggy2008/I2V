@@ -18,7 +18,7 @@ from utils.utils_mine import load_part_of_model2
 import time
 from matplotlib import pyplot as plt
 torch.manual_seed(2018)
-device_id = 1
+device_id = 0
 # set which gpu to use
 torch.cuda.set_device(device_id)
 
@@ -28,7 +28,7 @@ ckpt_path = './ckpt'
 exp_name = 'VideoSaliency_2020-10-14 03:36:19'
 
 args = {
-    'snapshot': '20000',  # your snapshot filename (exclude extension name)
+    'snapshot': '4000',  # your snapshot filename (exclude extension name)
     'crf_refine': False,  # whether to use crf to refine results
     'save_results': True,  # whether to save the resulting masks
     'input_size': (380, 380)
