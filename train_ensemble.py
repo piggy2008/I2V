@@ -13,12 +13,12 @@ from matplotlib import pyplot as plt
 import joint_transforms
 from config import msra10k_path, video_train_path, datasets_root, video_seq_gt_path, video_seq_path
 from datasets import ImageFolder, VideoImageFolder, VideoSequenceFolder, VideoImage2Folder, ImageFlowFolder, ImageFlow2Folder
-from misc import AvgMeter, check_mkdir, CriterionKL3, CriterionKL, CriterionPairWise
+from misc import AvgMeter, check_mkdir, CriterionKL3, CriterionKL, CriterionPairWise, CriterionStructure
 from models.MGA.mga_model import MGA_Network
 from models.Ensemble import Ensemble
 from torch.backends import cudnn
 import time
-from utils.utils_mine import load_part_of_model, load_part_of_model2
+from utils.utils_mine import load_part_of_model, load_part_of_model2, load_MGA
 
 import random
 
@@ -29,13 +29,14 @@ torch.manual_seed(2019)
 
 
 time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-ckpt_path = './ckpt'
+ckpt_path = './ckpt2'
 exp_name = 'VideoSaliency' + '_' + time_str
 
 args = {
     'distillation': True,
     'L2': False,
     'KL': False,
+    'structure': True,
     'iter_num': 10000,
     'iter_save': 2000,
     'iter_start_seq': 0,
@@ -113,6 +114,10 @@ if args['L2']:
     # criterion_pair = CriterionPairWise(scale=0.5).cuda()
 if args['KL']:
     criterion_kl = CriterionKL3().cuda()
+
+if args['structure']:
+    criterion_str = CriterionStructure().cuda()
+
 log_path = os.path.join(ckpt_path, exp_name, str(datetime.datetime.now()) + '.txt')
 
 total_loss_record, loss0_record, loss1_record, loss2_record = AvgMeter(), AvgMeter(), AvgMeter(), AvgMeter()
@@ -126,28 +131,10 @@ def fix_parameters(parameters):
             print(name, 'is fixed')
             parameter.requires_grad = False
 
-def load_MGA(mga_model, model_path, device_id=2):
-    pretrain_weights = torch.load(model_path, map_location='cuda:' + str(device_id))
-    pretrain_keys = list(pretrain_weights.keys())
-    pretrain_keys = [key for key in pretrain_keys if not key.endswith('num_batches_tracked')]
-    net_keys = list(mga_model.state_dict().keys())
-
-    for key in net_keys:
-        # key_ = 'module.' + key
-        key_ = key
-        if key_ in pretrain_keys:
-            assert (mga_model.state_dict()[key].size() == pretrain_weights[key_].size())
-            mga_model.state_dict()[key].copy_(pretrain_weights[key_])
-        else:
-            print('missing key: ', key_)
-    print('loaded pre-trained weights.')
-    return mga_model
-
-
 def main():
     teacher = MGA_Network(nInputChannels=3, n_classes=1, os=16,
                       img_backbone_type='resnet101', flow_backbone_type='resnet34')
-    teacher = load_MGA(teacher, args['mga_model_path'])
+    teacher = load_MGA(teacher, args['mga_model_path'], device_id=0)
     teacher.eval()
     teacher.cuda(device_id)
 
@@ -224,49 +211,49 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
     b_outputs0, b_outputs1 = outputs_b # CPD
     c_outputs0, c_outputs1, c_outputs2, c_outputs3, c_outputs4 = outputs_c # RAS
 
-    loss0_a = criterion(a_out1u, labels)
-    loss1_a = criterion(a_out2u, labels)
-    loss2_a = criterion(a_out2r, labels)
-    loss3_a = criterion(a_out3r, labels)
-    loss4_a = criterion(a_out4r, labels)
-    loss5_a = criterion(a_out5r, labels)
+    loss0_a = criterion_str(a_out1u, labels)
+    loss1_a = criterion_str(a_out2u, labels)
+    loss2_a = criterion_str(a_out2r, labels)
+    loss3_a = criterion_str(a_out3r, labels)
+    loss4_a = criterion_str(a_out4r, labels)
+    loss5_a = criterion_str(a_out5r, labels)
     loss_hard_a = (loss0_a + loss1_a) / 2 + loss2_a / 2 + loss3_a / 4 + loss4_a / 8 + loss5_a / 16
 
-    loss0_b = criterion(b_outputs0, labels)
-    loss1_b = criterion(b_outputs1, labels)
+    loss0_b = criterion_str(b_outputs0, labels)
+    loss1_b = criterion_str(b_outputs1, labels)
     loss_hard_b = loss0_b + loss1_b
 
-    loss0_c = criterion(c_outputs0, labels)
-    loss1_c = criterion(c_outputs1, labels)
-    loss2_c = criterion(c_outputs2, labels)
-    loss3_c = criterion(c_outputs3, labels)
-    loss4_c = criterion(c_outputs4, labels)
+    loss0_c = criterion_str(c_outputs0, labels)
+    loss1_c = criterion_str(c_outputs1, labels)
+    loss2_c = criterion_str(c_outputs2, labels)
+    loss3_c = criterion_str(c_outputs3, labels)
+    loss4_c = criterion_str(c_outputs4, labels)
     loss_hard_c = loss0_c + loss1_c + loss2_c + loss3_c + loss4_c
 
     # ensemble
-    loss_en_hard = criterion(a_out2u + b_outputs1 + c_outputs0, labels)
+    loss_en_hard = criterion_str(a_out2u + b_outputs1 + c_outputs0, labels)
 
     if args['distillation']:
-        loss0_a = criterion(a_out1u, F.sigmoid(prediction))
-        loss1_a = criterion(a_out2u, F.sigmoid(prediction))
-        loss2_a = criterion(a_out2r, F.sigmoid(prediction))
-        loss3_a = criterion(a_out3r, F.sigmoid(prediction))
-        loss4_a = criterion(a_out4r, F.sigmoid(prediction))
-        loss5_a = criterion(a_out5r, F.sigmoid(prediction))
+        loss0_a = criterion_str(a_out1u, F.sigmoid(prediction))
+        loss1_a = criterion_str(a_out2u, F.sigmoid(prediction))
+        loss2_a = criterion_str(a_out2r, F.sigmoid(prediction))
+        loss3_a = criterion_str(a_out3r, F.sigmoid(prediction))
+        loss4_a = criterion_str(a_out4r, F.sigmoid(prediction))
+        loss5_a = criterion_str(a_out5r, F.sigmoid(prediction))
         loss_soft_a = (loss0_a + loss1_a) / 2 + loss2_a / 2 + loss3_a / 4 + loss4_a / 8 + loss5_a / 16
 
-        loss0_b = criterion(b_outputs0, F.sigmoid(prediction))
-        loss1_b = criterion(b_outputs1, F.sigmoid(prediction))
+        loss0_b = criterion_str(b_outputs0, F.sigmoid(prediction))
+        loss1_b = criterion_str(b_outputs1, F.sigmoid(prediction))
         loss_soft_b = loss0_b + loss1_b
 
-        loss0_c = criterion(c_outputs0, F.sigmoid(prediction))
-        loss1_c = criterion(c_outputs1, F.sigmoid(prediction))
-        loss2_c = criterion(c_outputs2, F.sigmoid(prediction))
-        loss3_c = criterion(c_outputs3, F.sigmoid(prediction))
-        loss4_c = criterion(c_outputs4, F.sigmoid(prediction))
+        loss0_c = criterion_str(c_outputs0, F.sigmoid(prediction))
+        loss1_c = criterion_str(c_outputs1, F.sigmoid(prediction))
+        loss2_c = criterion_str(c_outputs2, F.sigmoid(prediction))
+        loss3_c = criterion_str(c_outputs3, F.sigmoid(prediction))
+        loss4_c = criterion_str(c_outputs4, F.sigmoid(prediction))
         loss_soft_c = loss0_c + loss1_c + loss2_c + loss3_c + loss4_c
 
-        loss_en_soft = criterion(a_out2u + b_outputs1 + c_outputs0, F.sigmoid(prediction))
+        loss_en_soft = criterion_str(a_out2u + b_outputs1 + c_outputs0, F.sigmoid(prediction))
 
     loss_hard = loss_hard_a + loss_hard_b + loss_hard_c
     if args['distillation']:

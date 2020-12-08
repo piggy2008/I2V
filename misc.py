@@ -3,7 +3,7 @@ import os
 import torch
 import torch.nn as nn
 import sys
-import pydensecrf.densecrf as dcrf
+# import pydensecrf.densecrf as dcrf
 import torch.nn.functional as F
 torch_ver = torch.__version__[:3]
 
@@ -79,6 +79,28 @@ class CriterionKL2(nn.Module):
         loss = (preds * (preds / target).log()).sum() / b
 
         return loss
+
+class CriterionStructure(nn.Module):
+    def __init__(self):
+        super(CriterionStructure, self).__init__()
+        self.gamma = 2
+
+    def forward(self, pred, target):
+        assert pred.size() == target.size()
+
+        weit = 1 + 5 * torch.abs(F.avg_pool2d(target, kernel_size=31, stride=1, padding=15) - target)
+        wbce = F.binary_cross_entropy_with_logits(pred, target, reduce='none')
+        wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
+
+        ##### focal loss #####
+        p_t = torch.exp(-wbce)
+        f_loss = (1 - p_t) ** self.gamma * wbce
+
+        pred = torch.sigmoid(pred)
+        inter = ((pred * target) * weit).sum(dim=(2, 3))
+        union = ((pred + target) * weit).sum(dim=(2, 3))
+        wiou = 1 - (inter + 1) / (union - inter + 1)
+        return (wbce + wiou + f_loss).mean()
 
 def _pointwise_loss(lambd, input, target, size_average=True, reduce=True):
     d = lambd(input, target)
@@ -196,44 +218,44 @@ def cal_fmeasure(precision, recall):
 
 
 # codes of this function are borrowed from https://github.com/Andrew-Qibin/dss_crf
-def crf_refine(img, annos):
-    def _sigmoid(x):
-        return 1 / (1 + np.exp(-x))
-
-    assert img.dtype == np.uint8
-    assert annos.dtype == np.uint8
-    assert img.shape[:2] == annos.shape
-
-    # img and annos should be np array with data type uint8
-
-    EPSILON = 1e-8
-
-    M = 2  # salient or not
-    tau = 1.05
-    # Setup the CRF model
-    d = dcrf.DenseCRF2D(img.shape[1], img.shape[0], M)
-
-    anno_norm = annos / 255.
-
-    n_energy = -np.log((1.0 - anno_norm + EPSILON)) / (tau * _sigmoid(1 - anno_norm))
-    p_energy = -np.log(anno_norm + EPSILON) / (tau * _sigmoid(anno_norm))
-
-    U = np.zeros((M, img.shape[0] * img.shape[1]), dtype='float32')
-    U[0, :] = n_energy.flatten()
-    U[1, :] = p_energy.flatten()
-
-    d.setUnaryEnergy(U)
-
-    d.addPairwiseGaussian(sxy=3, compat=3)
-    d.addPairwiseBilateral(sxy=60, srgb=5, rgbim=img, compat=5)
-
-    # Do the inference
-    infer = np.array(d.inference(1)).astype('float32')
-    res = infer[1, :]
-
-    res = res * 255
-    res = res.reshape(img.shape[:2])
-    return res.astype('uint8')
+# def crf_refine(img, annos):
+#     def _sigmoid(x):
+#         return 1 / (1 + np.exp(-x))
+#
+#     assert img.dtype == np.uint8
+#     assert annos.dtype == np.uint8
+#     assert img.shape[:2] == annos.shape
+#
+#     # img and annos should be np array with data type uint8
+#
+#     EPSILON = 1e-8
+#
+#     M = 2  # salient or not
+#     tau = 1.05
+#     # Setup the CRF model
+#     d = dcrf.DenseCRF2D(img.shape[1], img.shape[0], M)
+#
+#     anno_norm = annos / 255.
+#
+#     n_energy = -np.log((1.0 - anno_norm + EPSILON)) / (tau * _sigmoid(1 - anno_norm))
+#     p_energy = -np.log(anno_norm + EPSILON) / (tau * _sigmoid(anno_norm))
+#
+#     U = np.zeros((M, img.shape[0] * img.shape[1]), dtype='float32')
+#     U[0, :] = n_energy.flatten()
+#     U[1, :] = p_energy.flatten()
+#
+#     d.setUnaryEnergy(U)
+#
+#     d.addPairwiseGaussian(sxy=3, compat=3)
+#     d.addPairwiseBilateral(sxy=60, srgb=5, rgbim=img, compat=5)
+#
+#     # Do the inference
+#     infer = np.array(d.inference(1)).astype('float32')
+#     res = infer[1, :]
+#
+#     res = res * 255
+#     res = res.reshape(img.shape[:2])
+#     return res.astype('uint8')
 
 if __name__ == '__main__':
     pixel_wise_loss = CriterionKL3()
