@@ -24,6 +24,7 @@ import random
 
 cudnn.benchmark = True
 device_id = 1
+device_id2 = 0
 torch.manual_seed(2019)
 # torch.cuda.set_device(device_id)
 
@@ -37,10 +38,10 @@ args = {
     'L2': True,
     'KL': False,
     'structure': True,
-    'iter_num': 60000,
-    'iter_save': 5000,
+    'iter_num': 10000,
+    'iter_save': 2000,
     'iter_start_seq': 0,
-    'train_batch_size': 6,
+    'train_batch_size': 10,
     'last_iter': 0,
     'lr': 1e-3,
     'lr_decay': 0.9,
@@ -136,7 +137,7 @@ def main():
                       img_backbone_type='resnet101', flow_backbone_type='resnet34')
     teacher = load_MGA(teacher, args['mga_model_path'], device_id=device_id)
     teacher.eval()
-    teacher.cuda(device_id)
+    teacher.cuda(device_id2)
 
     student = Ensemble(device_id).cuda(device_id).train()
 
@@ -199,11 +200,15 @@ def train(student, teacher, optimizer):
                 return
 
 def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
-    inputs = Variable(inputs).cuda(device_id)
-    flows = Variable(flows).cuda(device_id)
-    labels = Variable(labels).cuda(device_id)
     if args['distillation']:
-        prediction, _, _, _, _ = teacher(inputs, flows)
+        inputs_t = Variable(inputs).cuda(device_id2)
+        flows_t = Variable(flows).cuda(device_id2)
+
+        prediction, _, _, _, _ = teacher(inputs_t, flows_t)
+        prediction = prediction.to(device_id)
+
+    inputs = Variable(inputs).cuda(device_id)
+    labels = Variable(labels).cuda(device_id)
 
     optimizer.zero_grad()
     outputs_a, outputs_c = student(inputs)
