@@ -28,7 +28,7 @@ ckpt_path = './ckpt2'
 exp_name = 'VideoSaliency_2020-12-09 14:33:56'
 
 args = {
-    'snapshot': '2000',  # your snapshot filename (exclude extension name)
+    'snapshot': '4000',  # your snapshot filename (exclude extension name)
     'crf_refine': False,  # whether to use crf to refine results
     'save_results': True,  # whether to save the resulting masks
     'input_size': (380, 380)
