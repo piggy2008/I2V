@@ -104,12 +104,12 @@ def main():
                 img = img.resize(args['input_size'])
                 img_var = Variable(img_transform(img).unsqueeze(0), volatile=True).cuda()
                 start = time.time()
-                outputs_a, outputs_b= net(img_var)
+                outputs_a, outputs_c = net(img_var)
                 a_out1u, a_out2u, a_out2r, a_out3r, a_out4r, a_out5r = outputs_a  # F3Net
-                b_outputs0, b_outputs1 = outputs_b  # CPD
-                # c_outputs0, c_outputs1, c_outputs2, c_outputs3, c_outputs4 = outputs_c  # RAS
-                prediction = a_out2u + b_outputs1
-                prediction = torch.sigmoid(prediction)
+                # b_outputs0, b_outputs1 = outputs_b  # CPD
+                c_outputs0, c_outputs1, c_outputs2, c_outputs3, c_outputs4 = outputs_c  # RAS
+                prediction = torch.sigmoid(a_out2u) + torch.sigmoid(c_outputs0)
+                prediction = prediction / 2
                 end = time.time()
                 print('running time:', (end - start))
                 # e = Erosion2d(1, 1, 5, soft_max=False).cuda()

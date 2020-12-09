@@ -34,7 +34,7 @@ exp_name = 'VideoSaliency' + '_' + time_str
 
 args = {
     'distillation': True,
-    'L2': False,
+    'L2': True,
     'KL': False,
     'structure': True,
     'iter_num': 60000,
@@ -42,10 +42,10 @@ args = {
     'iter_start_seq': 0,
     'train_batch_size': 8,
     'last_iter': 0,
-    'lr': 5 * 1e-3,
+    'lr': 1e-3,
     'lr_decay': 0.9,
     'weight_decay': 5e-4,
-    'momentum': 0.925,
+    'momentum': 0.95,
     'snapshot': '',
     # 'pretrain': os.path.join(ckpt_path, 'VideoSaliency_2020-07-24 15:18:51', '100000.pth'),
     'pretrain': '',
@@ -56,8 +56,8 @@ args = {
     # 'train_loader': 'video_image'
     'train_loader': 'flow_image',
     # 'train_loader': 'video_sequence'
-    'image_size': 400,
-    'crop_size': 350
+    'image_size': 430,
+    'crop_size': 380
 }
 
 imgs_file = os.path.join(datasets_root, args['imgs_file'])
@@ -206,10 +206,10 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
         prediction, _, _, _, _ = teacher(inputs, flows)
 
     optimizer.zero_grad()
-    outputs_a, outputs_b = student(inputs)
+    outputs_a, outputs_c = student(inputs)
     a_out1u, a_out2u, a_out2r, a_out3r, a_out4r, a_out5r = outputs_a # F3Net
-    b_outputs0, b_outputs1 = outputs_b # CPD
-    # c_outputs0, c_outputs1, c_outputs2, c_outputs3, c_outputs4 = outputs_c # RAS
+    # b_outputs0, b_outputs1 = outputs_b # CPD
+    c_outputs0, c_outputs1, c_outputs2, c_outputs3, c_outputs4 = outputs_c # RAS
 
     loss0_a = criterion_str(a_out1u, labels)
     loss1_a = criterion_str(a_out2u, labels)
@@ -219,19 +219,20 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
     loss5_a = criterion_str(a_out5r, labels)
     loss_hard_a = (loss0_a + loss1_a) / 2 + loss2_a / 2 + loss3_a / 4 + loss4_a / 8 + loss5_a / 16
 
-    loss0_b = criterion(b_outputs0, labels)
-    loss1_b = criterion(b_outputs1, labels)
-    loss_hard_b = loss0_b + loss1_b
+    # loss0_b = criterion(b_outputs0, labels)
+    # loss1_b = criterion(b_outputs1, labels)
+    # loss_hard_b = loss0_b + loss1_b
 
-    # loss0_c = criterion_str(c_outputs0, labels)
-    # loss1_c = criterion_str(c_outputs1, labels)
-    # loss2_c = criterion_str(c_outputs2, labels)
-    # loss3_c = criterion_str(c_outputs3, labels)
-    # loss4_c = criterion_str(c_outputs4, labels)
-    # loss_hard_c = loss0_c + loss1_c + loss2_c + loss3_c + loss4_c
+    loss0_c = criterion_str(c_outputs0, labels)
+    loss1_c = criterion_str(c_outputs1, labels)
+    loss2_c = criterion_str(c_outputs2, labels)
+    loss3_c = criterion_str(c_outputs3, labels)
+    loss4_c = criterion_str(c_outputs4, labels)
+    loss_hard_c = loss0_c + loss1_c + loss2_c + loss3_c + loss4_c
 
     # ensemble
-    loss_en_hard = criterion_str(a_out2u + b_outputs1, labels)
+    # loss_en_hard = criterion_str(a_out2u + c_outputs0, labels)
+    loss_contrast = criterion_l2(F.sigmoid(a_out2u), F.sigmoid(c_outputs0))
 
     if args['distillation']:
         loss0_a = criterion_str(a_out1u, F.sigmoid(prediction))
@@ -242,29 +243,30 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
         loss5_a = criterion_str(a_out5r, F.sigmoid(prediction))
         loss_soft_a = (loss0_a + loss1_a) / 2 + loss2_a / 2 + loss3_a / 4 + loss4_a / 8 + loss5_a / 16
 
-        loss0_b = criterion(b_outputs0, F.sigmoid(prediction))
-        loss1_b = criterion(b_outputs1, F.sigmoid(prediction))
-        loss_soft_b = loss0_b + loss1_b
+        # loss0_b = criterion(b_outputs0, F.sigmoid(prediction))
+        # loss1_b = criterion(b_outputs1, F.sigmoid(prediction))
+        # loss_soft_b = loss0_b + loss1_b
 
-        # loss0_c = criterion_str(c_outputs0, F.sigmoid(prediction))
-        # loss1_c = criterion_str(c_outputs1, F.sigmoid(prediction))
-        # loss2_c = criterion_str(c_outputs2, F.sigmoid(prediction))
-        # loss3_c = criterion_str(c_outputs3, F.sigmoid(prediction))
-        # loss4_c = criterion_str(c_outputs4, F.sigmoid(prediction))
-        # loss_soft_c = loss0_c + loss1_c + loss2_c + loss3_c + loss4_c
+        loss0_c = criterion_str(c_outputs0, F.sigmoid(prediction))
+        loss1_c = criterion_str(c_outputs1, F.sigmoid(prediction))
+        loss2_c = criterion_str(c_outputs2, F.sigmoid(prediction))
+        loss3_c = criterion_str(c_outputs3, F.sigmoid(prediction))
+        loss4_c = criterion_str(c_outputs4, F.sigmoid(prediction))
+        loss_soft_c = loss0_c + loss1_c + loss2_c + loss3_c + loss4_c
 
-        loss_en_soft = criterion(a_out2u + b_outputs1, F.sigmoid(prediction))
+        # loss_en_soft = criterion(a_out2u + b_outputs1, F.sigmoid(prediction))
 
-    loss_hard = loss_hard_a + loss_hard_b
+
+    loss_hard = loss_hard_a + loss_hard_c
     if args['distillation']:
-        loss_soft = loss_soft_a + loss_soft_b
-        total_loss = loss_hard + 0.5 * loss_soft + loss_en_hard + 0.5 * loss_en_soft
+        loss_soft = loss_soft_a + loss_soft_c
+        total_loss = loss_hard + 0.5 * loss_soft + loss_contrast
     else:
-        total_loss = loss_hard + loss_en_hard
+        total_loss = loss_hard
     total_loss.backward()
     optimizer.step()
 
-    print_log(total_loss, loss_hard, loss_soft, loss_en_hard, args['train_batch_size'], curr_iter, optimizer)
+    print_log(total_loss, loss_hard, loss_soft, loss_contrast, args['train_batch_size'], curr_iter, optimizer)
 
     return
 

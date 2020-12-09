@@ -22,11 +22,11 @@ class Ensemble(nn.Module):
         # self.student_c = RAS()
         if pretrained:
             self.student_a = load_part_of_model(self.student_a, 'pretrained/F3Net', device_id=device)
-            self.student_b = load_part_of_model(self.student_b, 'pretrained/CPD-R.pth', device_id=device)
-            # self.student_c = load_part_of_model(self.student_c, 'pretrained/RAS.v1.pth', device_id=device)
+            # self.student_b = load_part_of_model(self.student_b, 'pretrained/CPD-R.pth', device_id=device)
+            self.student_c = load_part_of_model(self.student_c, 'pretrained/RAS.v1.pth', device_id=device)
 
     def forward(self, x):
         # a_out1u, a_out2u, a_out2r, a_out3r, a_out4r, a_out5r = self.student_a(x)
         # b_outputs0, b_outputs1 = self.student_b(x)
         # c_outputs0, c_outputs1, c_outputs2, c_outputs3, c_outputs4 = self.student_c(x)
-        return self.student_a(x), self.student_b(x)
+        return self.student_a(x), self.student_c(x)
