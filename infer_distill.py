@@ -25,7 +25,8 @@ from matplotlib import pyplot as plt
 torch.manual_seed(2018)
 
 # set which gpu to use
-torch.cuda.set_device(0)
+device_id = 0
+torch.cuda.set_device(device_id)
 
 # the following two args specify the location of the file of trained model (pth extension)
 # you should have the pth file in the folder './$ckpt_path$/$exp_name$'
@@ -100,7 +101,8 @@ def main():
     print ('load snapshot \'%s\' for testing' % args['snapshot'])
     # net.load_state_dict(torch.load('pretrained/R2Net.pth', map_location='cuda:2'))
     # net = load_part_of_model2(net, 'pretrained/R2Net.pth', device_id=2)
-    net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, args['snapshot'] + '.pth'), map_location='cuda:2'))
+    net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, args['snapshot'] + '.pth'),
+                                   map_location='cuda:' + str(device_id)))
     net.eval()
     net.cuda()
     results = {}
