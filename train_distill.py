@@ -31,13 +31,10 @@ from utils.utils_mine import load_part_of_model, load_part_of_model2
 import random
 
 cudnn.benchmark = True
-<<<<<<< HEAD
-device_id = 1
-device_id2 = 2
-=======
+
 device_id = 0
 device_id2 = 1
->>>>>>> 7d05a275ea1202d69ad1d1bff257b30e322c60e3
+
 torch.manual_seed(2019)
 # torch.cuda.set_device(device_id)
 
@@ -126,11 +123,7 @@ else:
 train_loader = DataLoader(train_set, batch_size=args['train_batch_size'], num_workers=4, shuffle=True)
 
 criterion = nn.BCEWithLogitsLoss()
-<<<<<<< HEAD
-# erosion = Erosion2d(1, 1, 5, soft_max=False).cuda()
-=======
 
->>>>>>> 7d05a275ea1202d69ad1d1bff257b30e322c60e3
 if args['L2']:
     criterion_l2 = nn.MSELoss().cuda()
     # criterion_pair = CriterionPairWise(scale=0.5).cuda()
