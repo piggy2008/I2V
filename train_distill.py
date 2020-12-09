@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 import joint_transforms
 from config import msra10k_path, video_train_path, datasets_root, video_seq_gt_path, video_seq_path
 from datasets import ImageFolder, VideoImageFolder, VideoSequenceFolder, VideoImage2Folder, ImageFlowFolder, ImageFlow2Folder
-from misc import AvgMeter, check_mkdir, CriterionKL3, CriterionKL, CriterionPairWise
+from misc import AvgMeter, check_mkdir, CriterionKL3, CriterionKL, CriterionPairWise, CriterionStructure
 from models.MGA.mga_model import MGA_Network
 from models.BASNet.BASNet import BASNet
 from models.R3Net.R3Net import R3Net
@@ -123,6 +123,7 @@ else:
 train_loader = DataLoader(train_set, batch_size=args['train_batch_size'], num_workers=4, shuffle=True)
 
 criterion = nn.BCEWithLogitsLoss()
+criterion_str = CriterionStructure().cuda()
 
 if args['L2']:
     criterion_l2 = nn.MSELoss().cuda()
@@ -383,12 +384,12 @@ def train_F3Net(student, inputs_s, prediction, labels, need_prior=False):
     else:
         out1u, out2u, out2r, out3r, out4r, out5r = student(inputs_s)
 
-    loss0 = criterion(out1u, labels)
-    loss1 = criterion(out2u, labels)
-    loss2 = criterion(out2r, labels)
-    loss3 = criterion(out3r, labels)
-    loss4 = criterion(out4r, labels)
-    loss5 = criterion(out5r, labels)
+    loss0 = criterion_str(out1u, labels)
+    loss1 = criterion_str(out2u, labels)
+    loss2 = criterion_str(out2r, labels)
+    loss3 = criterion_str(out3r, labels)
+    loss4 = criterion_str(out4r, labels)
+    loss5 = criterion_str(out5r, labels)
     # loss7 = criterion(outputs7, labels)
 
     loss_hard = (loss0 + loss1) / 2 + loss2 / 2 + loss3 / 4 + loss4 / 8 + loss5 / 16
