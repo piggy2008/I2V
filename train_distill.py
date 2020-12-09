@@ -49,7 +49,7 @@ args = {
     'prior': False,
     'se_layer': False,
     'dilation': False,
-    'distillation': False,
+    'distillation': True,
     'L2': False,
     'KL': False,
     'iter_num': 20000,
@@ -335,7 +335,7 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter, 
     elif args['model'] == 'PoolNet':
         total_loss, loss0, loss1, loss2 = train_PoolNet(student, inputs_s, None, labels, need_prior)
     elif args['model'] == 'F3Net':
-        total_loss, loss0, loss1, loss2 = train_F3Net(student, inputs_s, None, labels, need_prior)
+        total_loss, loss0, loss1, loss2 = train_F3Net(student, inputs_s, prediction, labels, need_prior)
     elif args['model'] == 'R2Net':
         total_loss, loss0, loss1, loss2 = train_R2Net(student, inputs_s, None, labels, need_prior)
 
@@ -395,12 +395,12 @@ def train_F3Net(student, inputs_s, prediction, labels, need_prior=False):
     loss_hard = (loss0 + loss1) / 2 + loss2 / 2 + loss3 / 4 + loss4 / 8 + loss5 / 16
 
     if args['distillation'] and prediction is not None:
-        loss02 = criterion(out1u, F.sigmoid(prediction))
-        loss12 = criterion(out2u, F.sigmoid(prediction))
-        loss22 = criterion(out2r, F.sigmoid(prediction))
-        loss32 = criterion(out3r, F.sigmoid(prediction))
-        loss42 = criterion(out4r, F.sigmoid(prediction))
-        loss52 = criterion(out5r, F.sigmoid(prediction))
+        loss02 = criterion_str(out1u, F.sigmoid(prediction))
+        loss12 = criterion_str(out2u, F.sigmoid(prediction))
+        loss22 = criterion_str(out2r, F.sigmoid(prediction))
+        loss32 = criterion_str(out3r, F.sigmoid(prediction))
+        loss42 = criterion_str(out4r, F.sigmoid(prediction))
+        loss52 = criterion_str(out5r, F.sigmoid(prediction))
 
         loss_soft = (loss02 + loss12) / 2 + loss22 / 2 + loss32 / 4 + loss42 / 8 + loss52 / 16
         total_loss = loss_hard + 0.9 * loss_soft
