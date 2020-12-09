@@ -31,8 +31,8 @@ from module.morphology import Erosion2d
 import random
 
 cudnn.benchmark = True
-device_id = 2
-device_id2 = 3
+device_id = 1
+device_id2 = 2
 torch.manual_seed(2019)
 # torch.cuda.set_device(device_id)
 
@@ -50,8 +50,8 @@ args = {
     'distillation': True,
     'L2': False,
     'KL': False,
-    'iter_num': 10000,
-    'iter_save': 2000,
+    'iter_num': 20000,
+    'iter_save': 4000,
     'iter_start_seq': 0,
     'train_batch_size': 12,
     'last_iter': 0,
@@ -121,7 +121,7 @@ else:
 train_loader = DataLoader(train_set, batch_size=args['train_batch_size'], num_workers=4, shuffle=True)
 
 criterion = nn.BCEWithLogitsLoss()
-erosion = Erosion2d(1, 1, 5, soft_max=False).cuda()
+# erosion = Erosion2d(1, 1, 5, soft_max=False).cuda()
 if args['L2']:
     criterion_l2 = nn.MSELoss().cuda()
     # criterion_pair = CriterionPairWise(scale=0.5).cuda()
@@ -646,3 +646,4 @@ def print_log(total_loss, loss0, loss1, loss2, batch_size, curr_iter, optimizer,
 
 if __name__ == '__main__':
     main()
+
