@@ -35,7 +35,7 @@ exp_name = 'VideoSaliency_2020-12-09 16:28:38'
 
 args = {
     'model': 'F3Net',
-    'snapshot': '4000',  # your snapshot filename (exclude extension name)
+    'snapshot': '2000',  # your snapshot filename (exclude extension name)
     'crf_refine': False,  # whether to use crf to refine results
     'save_results': True,  # whether to save the resulting masks
     'input_size': (380, 380)
