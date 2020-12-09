@@ -27,18 +27,23 @@ from models.F3Net.net import F3Net
 from torch.backends import cudnn
 import time
 from utils.utils_mine import load_part_of_model, load_part_of_model2
-from module.morphology import Erosion2d
+
 import random
 
 cudnn.benchmark = True
+<<<<<<< HEAD
 device_id = 1
 device_id2 = 2
+=======
+device_id = 0
+device_id2 = 1
+>>>>>>> 7d05a275ea1202d69ad1d1bff257b30e322c60e3
 torch.manual_seed(2019)
 # torch.cuda.set_device(device_id)
 
 
 time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-ckpt_path = './ckpt'
+ckpt_path = './ckpt2'
 exp_name = 'VideoSaliency' + '_' + time_str
 
 args = {
@@ -47,7 +52,7 @@ args = {
     'prior': False,
     'se_layer': False,
     'dilation': False,
-    'distillation': True,
+    'distillation': False,
     'L2': False,
     'KL': False,
     'iter_num': 20000,
@@ -121,7 +126,11 @@ else:
 train_loader = DataLoader(train_set, batch_size=args['train_batch_size'], num_workers=4, shuffle=True)
 
 criterion = nn.BCEWithLogitsLoss()
+<<<<<<< HEAD
 # erosion = Erosion2d(1, 1, 5, soft_max=False).cuda()
+=======
+
+>>>>>>> 7d05a275ea1202d69ad1d1bff257b30e322c60e3
 if args['L2']:
     criterion_l2 = nn.MSELoss().cuda()
     # criterion_pair = CriterionPairWise(scale=0.5).cuda()
@@ -332,7 +341,7 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter, 
     elif args['model'] == 'PoolNet':
         total_loss, loss0, loss1, loss2 = train_PoolNet(student, inputs_s, None, labels, need_prior)
     elif args['model'] == 'F3Net':
-        total_loss, loss0, loss1, loss2 = train_F3Net(student, inputs_s, prediction, labels, need_prior)
+        total_loss, loss0, loss1, loss2 = train_F3Net(student, inputs_s, None, labels, need_prior)
     elif args['model'] == 'R2Net':
         total_loss, loss0, loss1, loss2 = train_R2Net(student, inputs_s, None, labels, need_prior)
 
@@ -641,8 +650,6 @@ def print_log(total_loss, loss0, loss1, loss2, batch_size, curr_iter, optimizer,
            optimizer.param_groups[1]['lr'])
     print(log)
     open(log_path, 'a').write(log + '\n')
-
-
 
 if __name__ == '__main__':
     main()
