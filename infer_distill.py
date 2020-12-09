@@ -8,7 +8,7 @@ from torchvision import transforms
 
 from config import ecssd_path, hkuis_path, pascals_path, sod_path, dutomron_path, \
     davis_path, fbms_path, mcl_path, uvsd_path, visal_path, vos_path, segtrack_path, davsod_path
-from misc import check_mkdir, crf_refine, AvgMeter, cal_precision_recall_mae, cal_fmeasure
+from misc import check_mkdir, AvgMeter, cal_precision_recall_mae, cal_fmeasure
 from models.BASNet.BASNet import BASNet
 from models.R3Net.R3Net import R3Net
 from models.DSS.DSSNet import build_model
@@ -34,7 +34,7 @@ exp_name = 'VideoSaliency_2020-10-14 03:36:19'
 
 args = {
     'model': 'F3Net',
-    'snapshot': '20000',  # your snapshot filename (exclude extension name)
+    'snapshot': '4000',  # your snapshot filename (exclude extension name)
     'crf_refine': False,  # whether to use crf to refine results
     'save_results': True,  # whether to save the resulting masks
     'input_size': (380, 380)
@@ -60,13 +60,13 @@ to_pil = transforms.ToPILImage()
 # gt_root = os.path.join(segtrack_path, 'GT')
 # imgs_path = os.path.join(segtrack_path, 'SegTrackV2_test_single.txt')
 
-# to_test = {'ViSal': os.path.join(visal_path, 'ViSal_test')}
-# gt_root = os.path.join(visal_path, 'GT')
-# imgs_path = os.path.join(visal_path, 'ViSal_test_single.txt')
+to_test = {'ViSal': os.path.join(visal_path, 'ViSal_test')}
+gt_root = os.path.join(visal_path, 'GT')
+imgs_path = os.path.join(visal_path, 'ViSal_test_single.txt')
 
-to_test = {'VOS': os.path.join(vos_path, 'VOS_test')}
-gt_root = os.path.join(vos_path, 'GT')
-imgs_path = os.path.join(vos_path, 'VOS_test_single.txt')
+# to_test = {'VOS': os.path.join(vos_path, 'VOS_test')}
+# gt_root = os.path.join(vos_path, 'GT')
+# imgs_path = os.path.join(vos_path, 'VOS_test_single.txt')
 
 #to_test = {'DAVSOD': os.path.join(davsod_path, 'DAVSOD_test')}
 #gt_root = os.path.join(davsod_path, 'GT')
@@ -216,8 +216,8 @@ def main():
 
                 prediction = MaxMinNormalization(prediction, prediction.max(), prediction.min()) * 255.0
                 prediction = prediction.astype('uint8')
-                if args['crf_refine']:
-                    prediction = crf_refine(np.array(img), prediction)
+                # if args['crf_refine']:
+                #     prediction = crf_refine(np.array(img), prediction)
 
                 gt = np.array(Image.open(os.path.join(gt_root, img_name + '.png')).convert('L'))
                 precision, recall, mae = cal_precision_recall_mae(prediction, gt)
