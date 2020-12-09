@@ -108,7 +108,7 @@ def main():
                 a_out1u, a_out2u, a_out2r, a_out3r, a_out4r, a_out5r = outputs_a  # F3Net
                 # b_outputs0, b_outputs1 = outputs_b  # CPD
                 c_outputs0, c_outputs1, c_outputs2, c_outputs3, c_outputs4 = outputs_c  # RAS
-                prediction = torch.sigmoid(a_out2u)
+                prediction = torch.sigmoid(c_outputs0)
                 end = time.time()
                 print('running time:', (end - start))
                 # e = Erosion2d(1, 1, 5, soft_max=False).cuda()
