@@ -216,23 +216,23 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
     # b_outputs0, b_outputs1 = outputs_b # CPD
     c_outputs0, c_outputs1, c_outputs2, c_outputs3, c_outputs4 = outputs_c # RAS
 
-    loss0_a = criterion_str(a_out1u, labels)
-    loss1_a = criterion_str(a_out2u, labels)
-    loss2_a = criterion_str(a_out2r, labels)
-    loss3_a = criterion_str(a_out3r, labels)
-    loss4_a = criterion_str(a_out4r, labels)
-    loss5_a = criterion_str(a_out5r, labels)
+    loss0_a = criterion(a_out1u, labels)
+    loss1_a = criterion(a_out2u, labels)
+    loss2_a = criterion(a_out2r, labels)
+    loss3_a = criterion(a_out3r, labels)
+    loss4_a = criterion(a_out4r, labels)
+    loss5_a = criterion(a_out5r, labels)
     loss_hard_a = (loss0_a + loss1_a) / 2 + loss2_a / 2 + loss3_a / 4 + loss4_a / 8 + loss5_a / 16
 
     # loss0_b = criterion(b_outputs0, labels)
     # loss1_b = criterion(b_outputs1, labels)
     # loss_hard_b = loss0_b + loss1_b
 
-    loss0_c = criterion_str(c_outputs0, labels)
-    loss1_c = criterion_str(c_outputs1, labels)
-    loss2_c = criterion_str(c_outputs2, labels)
-    loss3_c = criterion_str(c_outputs3, labels)
-    loss4_c = criterion_str(c_outputs4, labels)
+    loss0_c = criterion(c_outputs0, labels)
+    loss1_c = criterion(c_outputs1, labels)
+    loss2_c = criterion(c_outputs2, labels)
+    loss3_c = criterion(c_outputs3, labels)
+    loss4_c = criterion(c_outputs4, labels)
     loss_hard_c = loss0_c + loss1_c + loss2_c + loss3_c + loss4_c
 
     # ensemble
@@ -240,23 +240,23 @@ def train_single(student, teacher, inputs, flows, labels, optimizer, curr_iter):
     loss_contrast = criterion_l2(F.sigmoid(a_out2u), F.sigmoid(c_outputs0))
 
     if args['distillation']:
-        loss0_a = criterion_str(a_out1u, F.sigmoid(prediction))
-        loss1_a = criterion_str(a_out2u, F.sigmoid(prediction))
-        loss2_a = criterion_str(a_out2r, F.sigmoid(prediction))
-        loss3_a = criterion_str(a_out3r, F.sigmoid(prediction))
-        loss4_a = criterion_str(a_out4r, F.sigmoid(prediction))
-        loss5_a = criterion_str(a_out5r, F.sigmoid(prediction))
+        loss0_a = criterion(a_out1u, F.sigmoid(prediction))
+        loss1_a = criterion(a_out2u, F.sigmoid(prediction))
+        loss2_a = criterion(a_out2r, F.sigmoid(prediction))
+        loss3_a = criterion(a_out3r, F.sigmoid(prediction))
+        loss4_a = criterion(a_out4r, F.sigmoid(prediction))
+        loss5_a = criterion(a_out5r, F.sigmoid(prediction))
         loss_soft_a = (loss0_a + loss1_a) / 2 + loss2_a / 2 + loss3_a / 4 + loss4_a / 8 + loss5_a / 16
 
         # loss0_b = criterion(b_outputs0, F.sigmoid(prediction))
         # loss1_b = criterion(b_outputs1, F.sigmoid(prediction))
         # loss_soft_b = loss0_b + loss1_b
 
-        loss0_c = criterion_str(c_outputs0, F.sigmoid(prediction))
-        loss1_c = criterion_str(c_outputs1, F.sigmoid(prediction))
-        loss2_c = criterion_str(c_outputs2, F.sigmoid(prediction))
-        loss3_c = criterion_str(c_outputs3, F.sigmoid(prediction))
-        loss4_c = criterion_str(c_outputs4, F.sigmoid(prediction))
+        loss0_c = criterion(c_outputs0, F.sigmoid(prediction))
+        loss1_c = criterion(c_outputs1, F.sigmoid(prediction))
+        loss2_c = criterion(c_outputs2, F.sigmoid(prediction))
+        loss3_c = criterion(c_outputs3, F.sigmoid(prediction))
+        loss4_c = criterion(c_outputs4, F.sigmoid(prediction))
         loss_soft_c = loss0_c + loss1_c + loss2_c + loss3_c + loss4_c
 
         # loss_en_soft = criterion(a_out2u + b_outputs1, F.sigmoid(prediction))
