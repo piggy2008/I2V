@@ -18,8 +18,8 @@ class Ensemble(nn.Module):
     def __init__(self, device, pretrained=True):
         super(Ensemble, self).__init__()
         self.student_a = F3Net(cfg=None)
-        self.student_b = CPD_ResNet()
-        # self.student_c = RAS()
+        # self.student_b = CPD_ResNet()
+        self.student_c = RAS()
         if pretrained:
             self.student_a = load_part_of_model(self.student_a, 'pretrained/F3Net', device_id=device)
             # self.student_b = load_part_of_model(self.student_b, 'pretrained/CPD-R.pth', device_id=device)
