@@ -169,6 +169,7 @@ class F3Net(nn.Module):
         self.linearr5 = nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1)
 
         ########## append prior from MGA ############
+        self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
         self.initialize()
 
     def forward(self, x, prior=None, shape=None):
