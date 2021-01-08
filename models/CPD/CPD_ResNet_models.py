@@ -118,7 +118,7 @@ class CPD_ResNet(nn.Module):
 
 
         ########## append prior from MGA ############
-        # self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
+        self.up_feature = nn.Sequential(nn.Conv2d(3, 2, 1), nn.BatchNorm2d(2), nn.ReLU(inplace=True))
         #
         for m in self.modules():
             if isinstance(m, nn.ReLU) or isinstance(m, nn.Dropout):
